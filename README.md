@@ -28,170 +28,157 @@ Use it as a local plugin. And forwardedHeaders.insecure (proxy forward headers) 
 #### Kubernetes Deployment Example
 
 ```yaml
-apiVersion: v1
-items:
-- apiVersion: apps/v1
-  kind: DaemonSet
-  metadata:
-    labels:
-      app: ingress-traefik-controller
-    name: ingress-traefik-controller
-    namespace: traefik
-  spec:
-    selector:
-      matchLabels:
-        app: ingress-traefik-controller
-    template:
-      metadata:
-        labels:
-          app: ingress-traefik-controller
-      spec:
-        automountServiceAccountToken: true
-        containers:
-        - args:
-          - --global.checknewversion
-          - --global.sendanonymoususage
-          - --entryPoints.metrics.address=:9100/tcp
-          - --entryPoints.traefik.address=:9000/tcp
-          - --entryPoints.web.proxyProtocol.insecure
-          - --entryPoints.web.forwardedHeaders.insecure
-          - --entryPoints.web.address=:8000/tcp
-          - --entryPoints.websecure.address=:8443/tcp
-          - --entryPoints.websecure.proxyProtocol.insecure
-          - --entryPoints.websecure.forwardedHeaders.insecure
-          - --api.dashboard=true
-          - --ping=true
-          - --metrics.prometheus=true
-          - --metrics.prometheus.entrypoint=metrics
-          - --providers.kubernetescrd
-          - --providers.kubernetesingress
-          - --entryPoints.websecure.http.tls=true
-          - --log.level=DEBUG
-          - --experimental.localPlugins.traefik-real-ip.modulename=github.com/r3d-shadow/traefik-real-ip
-          env:
-          - name: POD_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.name
-          - name: POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.namespace
-          image: docker.io/traefik:v3.0.2
-          imagePullPolicy: IfNotPresent
-          livenessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /ping
-              port: 9000
-              scheme: HTTP
-            initialDelaySeconds: 2
-            periodSeconds: 10
-            successThreshold: 1
-            timeoutSeconds: 2
-          name: ingress-traefik-controller
-          ports:
-          - containerPort: 9100
-            name: metrics
-            protocol: TCP
-          - containerPort: 9000
-            name: traefik
-            protocol: TCP
-          - containerPort: 8000
-            name: web
-            protocol: TCP
-          - containerPort: 8443
-            name: websecure
-            protocol: TCP
-          readinessProbe:
-            failureThreshold: 1
-            httpGet:
-              path: /ping
-              port: 9000
-              scheme: HTTP
-            initialDelaySeconds: 2
-            periodSeconds: 10
-            successThreshold: 1
-            timeoutSeconds: 2
-          resources:
-            limits:
-              cpu: 200m
-              memory: 100Mi
-            requests:
-              cpu: 100m
-              memory: 50Mi
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-              - ALL
-            readOnlyRootFilesystem: true
-            runAsGroup: 65532
-            runAsNonRoot: true
-            runAsUser: 65532
-          terminationMessagePath: /dev/termination-log
-          terminationMessagePolicy: File
-          volumeMounts:
-          - mountPath: /data
-            name: data
-          - mountPath: /tmp
-            name: tmp
-          - mountPath: /plugins-storage
-            name: plugins-storage
-          - mountPath: /plugins-local
-            name: plugins-local
-        dnsPolicy: ClusterFirst
-        initContainers:
-        - args:
-          - |
-            apk update && apk add git && git clone https://github.com/r3d-shadow/traefik-real-ip /plugins-local/src/github.com/r3d-shadow/traefik-real-ip --depth 1 --single-branch --branch main
-          command:
-          - /bin/sh
-          - -c
-          image: alpine:3
-          imagePullPolicy: IfNotPresent
-          name: install-plugin
-          resources: {}
-          securityContext:
-            runAsUser: 0
-          terminationMessagePath: /dev/termination-log
-          terminationMessagePolicy: File
-          volumeMounts:
-          - mountPath: /plugins-local
-            name: plugins-local
-        restartPolicy: Always
-        schedulerName: default-scheduler
-        securityContext: {}
-        serviceAccount: ingress-traefik-controller
-        serviceAccountName: ingress-traefik-controller
-        terminationGracePeriodSeconds: 60
-        volumes:
-        - emptyDir: {}
-          name: data
-        - emptyDir: {}
-          name: tmp
-        - emptyDir: {}
-          name: plugins-storage
-        - emptyDir: {}
-          name: plugins-local
-    updateStrategy:
-      rollingUpdate:
-        maxSurge: 0
-        maxUnavailable: 1
-      type: RollingUpdate
-  status:
-    currentNumberScheduled: 2
-    desiredNumberScheduled: 2
-    numberAvailable: 2
-    numberMisscheduled: 0
-    numberReady: 2
-    observedGeneration: 1
-    updatedNumberScheduled: 2
-kind: List
+apiVersion: apps/v1
+kind: DaemonSet
 metadata:
-  resourceVersion: ""
+  labels:
+    app: ingress-traefik-controller
+  name: ingress-traefik-controller
+  namespace: traefik
+spec:
+  selector:
+    matchLabels:
+      app: ingress-traefik-controller
+  template:
+    metadata:
+      labels:
+        app: ingress-traefik-controller
+    spec:
+      automountServiceAccountToken: true
+      containers:
+      - args:
+        - --global.checknewversion
+        - --global.sendanonymoususage
+        - --entryPoints.metrics.address=:9100/tcp
+        - --entryPoints.traefik.address=:9000/tcp
+        - --entryPoints.web.proxyProtocol.insecure
+        - --entryPoints.web.forwardedHeaders.insecure
+        - --entryPoints.web.address=:8000/tcp
+        - --entryPoints.websecure.address=:8443/tcp
+        - --entryPoints.websecure.proxyProtocol.insecure
+        - --entryPoints.websecure.forwardedHeaders.insecure
+        - --api.dashboard=true
+        - --ping=true
+        - --metrics.prometheus=true
+        - --metrics.prometheus.entrypoint=metrics
+        - --providers.kubernetescrd
+        - --providers.kubernetesingress
+        - --entryPoints.websecure.http.tls=true
+        - --log.level=DEBUG
+        - --experimental.localPlugins.traefik-real-ip.modulename=github.com/r3d-shadow/traefik-real-ip
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        image: docker.io/traefik:v3.0.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /ping
+            port: 9000
+            scheme: HTTP
+          initialDelaySeconds: 2
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 2
+        name: ingress-traefik-controller
+        ports:
+        - containerPort: 9100
+          name: metrics
+          protocol: TCP
+        - containerPort: 9000
+          name: traefik
+          protocol: TCP
+        - containerPort: 8000
+          name: web
+          protocol: TCP
+        - containerPort: 8443
+          name: websecure
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 1
+          httpGet:
+            path: /ping
+            port: 9000
+            scheme: HTTP
+          initialDelaySeconds: 2
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 2
+        resources:
+          limits:
+            cpu: 200m
+            memory: 100Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsGroup: 65532
+          runAsNonRoot: true
+          runAsUser: 65532
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /data
+          name: data
+        - mountPath: /tmp
+          name: tmp
+        - mountPath: /plugins-storage
+          name: plugins-storage
+        - mountPath: /plugins-local
+          name: plugins-local
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - args:
+        - |
+          apk update && apk add git && git clone https://github.com/r3d-shadow/traefik-real-ip /plugins-local/src/github.com/r3d-shadow/traefik-real-ip --depth 1 --single-branch --branch main
+        command:
+        - /bin/sh
+        - -c
+        image: alpine:3
+        imagePullPolicy: IfNotPresent
+        name: install-plugin
+        resources: {}
+        securityContext:
+          runAsUser: 0
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /plugins-local
+          name: plugins-local
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: ingress-traefik-controller
+      serviceAccountName: ingress-traefik-controller
+      terminationGracePeriodSeconds: 60
+      volumes:
+      - emptyDir: {}
+        name: data
+      - emptyDir: {}
+        name: tmp
+      - emptyDir: {}
+        name: plugins-storage
+      - emptyDir: {}
+        name: plugins-local
+  updateStrategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+    type: RollingUpdate
 ---
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
