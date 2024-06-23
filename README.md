@@ -64,7 +64,7 @@ spec:
         - --providers.kubernetescrd
         - --providers.kubernetesingress
         - --entryPoints.websecure.http.tls=true
-        - --log.level=DEBUG
+        - --log.level=INFO
         - --experimental.localPlugins.traefik-real-ip.modulename=github.com/r3d-shadow/traefik-real-ip
         env:
         - name: POD_NAME
@@ -129,8 +129,6 @@ spec:
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
         volumeMounts:
         - mountPath: /data
           name: data
@@ -140,7 +138,6 @@ spec:
           name: plugins-storage
         - mountPath: /plugins-local
           name: plugins-local
-      dnsPolicy: ClusterFirst
       initContainers:
       - args:
         - |
@@ -154,15 +151,11 @@ spec:
         resources: {}
         securityContext:
           runAsUser: 0
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
         volumeMounts:
         - mountPath: /plugins-local
           name: plugins-local
       restartPolicy: Always
-      schedulerName: default-scheduler
       securityContext: {}
-      serviceAccount: ingress-traefik-controller
       serviceAccountName: ingress-traefik-controller
       terminationGracePeriodSeconds: 60
       volumes:
