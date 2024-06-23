@@ -1,0 +1,8 @@
+displayName: Traefik Real IP
+type: middleware
+import: github.com/r3d-shadow/traefik-real-ip
+
+summary: When traefik is deployed behind a load balancer, it should get the real IP from the X-Forwarded-For header without getting spoofed.
+
+testData:
+  forwardedForDepth: 2
