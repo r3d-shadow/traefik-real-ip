@@ -212,19 +212,27 @@ To prevent IP spoofing attacks, configure the `forwardedForDepth` parameter appr
 
 ### Example Usage
 
-When sending a request with a custom `X-Forwarded-For` header:
+Let's illustrate the usage of the `traefik_real_ip` plugin with a practical example involving an `X-Forwarded-For` header:
+
+Consider a scenario where a request is made with the following `X-Forwarded-For` header:
+
+```
+X-Forwarded-For: SPOOF_IP, REAL_IP, PROXY1, PROXY0
+```
+
+To simulate this scenario using curl:
 
 ```bash
-curl -X POST https://example.com/whoami -H "X-Forwarded-For: SPOOF_IP, REAL_IP, PROXY_IP1, PROXY_IP2, PROXY_IP3"
+curl -X POST https://example.com/whoami -H "X-Forwarded-For: SPOOF_IP"
 ```
 
-Assuming `forwardedForDepth: 2`, the resulting headers would include:
+In this setup:
+- **X-Forwarded-For Header**: The header includes a chain of IP addresses, potentially including spoofed IPs.
+- **Plugin Behavior**: With `forwardedForDepth: 2` configured in the `traefik_real_ip` plugin, it will set the `X-Real-Ip` header to `REAL_IP`, which is the second IP in the `X-Forwarded-For` chain after the spoofed IP.
+- **X-Real-Ip Header**: After processing, the X-Real-Ip will accurately reflect the real client IP as follows:
 
 ```
-Hostname: <hostname>
-IP: <actual_real_ip>
-...
-X-Real-Ip: <actual_real_ip>
+X-Real-Ip: REAL_IP
 ```
 
-This demonstrates how the plugin accurately sets the `X-Real-Ip` header based on the `X-Forwarded-For` header, ensuring correct identification of the client IP even when Traefik is behind a proxy or load balancer or cdn.
+This ensures that the application receives the correct client IP information despite the presence of spoofed IPs in the `X-Forwarded-For` header, thereby enhancing security and trustworthiness in identifying client origins.
