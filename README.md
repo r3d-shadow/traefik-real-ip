@@ -1,31 +1,34 @@
-# Traefik Real IP Plugin
+# Enhancing IP Transparency with Traefik and the `traefik_real_ip` Plugin
 
-The `traefik_real_ip` plugin for Traefik enhances the ability to extract and set the real client IP address from the `X-Forwarded-For` header. This is particularly useful when Traefik is deployed behind a load balancer or proxy where the actual client IP address can be obscured.
+[Github Repo Link for traefik-real-ip Plugin](https://github.com/r3d-shadow/traefik-real-ip/)
 
-## Features
+For an insightful deep dive into how the X-Forwarded-For header impacts rate limiting and why setting the real client IP is essential, consider reading this [blog](https://red-shadow.live/blogs/bypassing-rate-limiting-using-the-x-forwarded-for-header-a-deep-dive). Understanding these concepts is pivotal in ensuring robust and secure application deployments.
 
-- Extracts the real client IP address from the `X-Forwarded-For` header.
-- Configurable depth (`forwardedForDepth`) for selecting which IP from `X-Forwarded-For` to use as the real IP.
-- Sets the `X-Real-Ip` header with the determined real client IP address.
-- Mitigates IP spoofing by ensuring the `X-Real-Ip` header reflects the actual client IP (`REAL_IP`).
+## Introduction to Traefik
 
-## Configuration
+Traefik is a modern, dynamic reverse proxy and load balancer designed to simplify the deployment and management of applications. It's especially powerful in a Kubernetes environment, where it acts as an ingress controller, managing external access to the services running within the cluster.
 
-### Configuration Options
+### Key Features of Traefik:
+- **Automatic Service Discovery**: Traefik dynamically discovers services in your infrastructure and automatically reconfigures itself.
+- **Load Balancing**: Distributes incoming traffic across multiple service instances to ensure availability and reliability.
+- **SSL Termination**: Automatically handles SSL certificates, allowing for secure communication.
+- **Middleware Support**: Easily extend Traefik’s capabilities with middlewares for authentication, rate limiting, etc.
 
-The plugin supports the following configuration option:
+## Understanding Reverse Proxy and Kubernetes Ingress
 
-| Option             | Description |
-| ------------------ | ----------- |
-| `forwardedForDepth`| Specifies the depth to look into the `X-Forwarded-For` header. Default is `1`, meaning it uses the last IP unless configured otherwise. |
+A reverse proxy serves as an intermediary for requests from clients seeking resources from servers. Traefik, when configured as a reverse proxy, forwards client requests to the appropriate backend services based on the defined rules.
 
-### Example Configuration
+In Kubernetes, an **Ingress Controller** like Traefik manages the ingress traffic by defining rules for routing external traffic to internal services. This is crucial for enabling access to the applications running inside the cluster from the outside world.
 
-Use it as a local plugin. And forwardedHeaders.insecure (proxy forward headers) property should be enabled.
+## Deploying Custom Plugins in Traefik
 
-### Deployment Configuration
+One of the standout features of Traefik is its support for custom plugins. This capability allows users to extend Traefik’s functionality according to their specific needs. Plugins can be integrated as part of Traefik's pipeline, handling requests before they reach the backend services.
 
-#### Kubernetes Deployment Example
+### Setting Up a Custom Local Plugin with Init Containers
+
+To deploy a custom local plugin, we use an init container to download and set up the plugin source code in the correct directory. This approach is especially useful when you need to host the plugin locally within the Kubernetes cluster.
+
+Here’s an example of how you can set up a custom local plugin with Traefik:
 
 ```yaml
 apiVersion: apps/v1
@@ -64,7 +67,7 @@ spec:
         - --providers.kubernetescrd
         - --providers.kubernetesingress
         - --entryPoints.websecure.http.tls=true
-        - --log.level=INFO
+        - --log.level=DEBUG
         - --experimental.localPlugins.traefik-real-ip.modulename=github.com/r3d-shadow/traefik-real-ip
         env:
         - name: POD_NAME
@@ -172,43 +175,36 @@ spec:
       maxSurge: 0
       maxUnavailable: 1
     type: RollingUpdate
----
-apiVersion: traefik.io/v1alpha1
-kind: IngressRoute
-metadata:
-  name: whoami-ingressroute
-  namespace: test
-spec:
-  entryPoints:
-  - web
-  - websecure
-  routes:
-  - kind: Rule
-    match: Host(`example.com`) && PathPrefix(`/whoami`)
-    middlewares:
-    - name: traefik-real-ip
-    services:
-    - name: whoami
-      port: 3000
----
-apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: traefik-real-ip
-  namespace: test
-spec:
-  plugin:
-    traefik-real-ip:
-      forwardedForDepth: 2
 ```
 
-### Configuration Documentation
+### Understanding the Init Container
 
-This plugin ensures that Traefik accurately determines the real client IP address by evaluating the `X-Forwarded-For` header. Adjust the `forwardedForDepth` parameter to suit your environment and security requirements.
+In the example above:
+- **Init Container**: `install-plugin` is an init container that runs before the main Traefik container starts. It installs `git` and clones the plugin repository into the `/plugins-local` directory.
+- **Volume Mounts**: The cloned plugin code is mounted into the main Traefik container at the `/plugins-local` path.
+
+## The `traefik_real_ip` Plugin
+
+The `traefik_real_ip` plugin for Traefik enhances the ability to accurately identify and set the real client IP address when Traefik is deployed behind multiple layers of proxies or load balancers.
+
+### Why Real IP Matters?
+
+In scenarios where Traefik sits behind a series of proxies (e.g., CDN, load balancers), the client’s original IP address can be obscured. Correctly identifying the client’s real IP address is crucial for:
+- **Security**: Accurate IP logging helps in security audits and incident response.
+- **Rate Limiting and Geo-blocking**: Applying policies based on the client’s real IP address.
+- **Custom Application Logic**: Some applications might rely on the client’s IP for personalized content delivery or access control.
+
+### How It Works
+
+The plugin examines the `X-Forwarded-For` header, which carries a list of IP addresses representing the client’s route through proxies. By configuring the `forwardedForDepth` parameter, you specify how far back in the list to look to determine the real client IP.
+
+### Configuration Options
+
+- **`forwardedForDepth`**: Determines the position in the `X-Forwarded-For` header to use as the real IP. A value of `1` (default) means the last IP in the list is used. Increasing this value allows you to step back through the proxies to find the actual client IP.
 
 ### Preventing IP Spoofing
 
-To prevent IP spoofing attacks, configure the `forwardedForDepth` parameter appropriately. For instance, with `forwardedForDepth: 2`, the plugin ensures that the `X-Real-Ip` header always reflects the actual client IP (`REAL_IP`) from the `X-Forwarded-For` header.
+To prevent IP spoofing attacks, it’s important to configure the `forwardedForDepth` correctly. For example, with `forwardedForDepth: 2`, the plugin will pick the second last IP in the `X-Forwarded-For` header chain as the real IP, mitigating attempts to spoof the client's IP address.
 
 ### Example Usage
 
@@ -236,3 +232,78 @@ X-Real-Ip: REAL_IP
 ```
 
 This ensures that the application receives the correct client IP information despite the presence of spoofed IPs in the `X-Forwarded-For` header, thereby enhancing security and trustworthiness in identifying client origins.
+
+### Full Configuration Example
+
+Here’s a configuration setup for deploying the `traefik_real_ip` plugin in Kubernetes with Traefik:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: whoami
+  name: whoami
+spec:
+  selector:
+    matchLabels:
+      app: whoami
+  template:
+    metadata:
+      labels:
+        app: whoami
+    spec:
+      containers:
+      - image: containous/whoami
+        imagePullPolicy: Always
+        name: whoami
+        ports:
+        - containerPort: 80
+          name: web
+          protocol: TCP
+        resources: {}
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: whoami
+spec:
+  ports:
+  - name: web
+    port: 80
+    protocol: TCP
+    targetPort: web
+  selector:
+    app: whoami
+  type: ClusterIP
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: whoami
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: Host(`example.com`) && PathPrefix(`/whoami`)
+      kind: Rule
+      services:
+        - name: whoami
+          port: 80
+      middlewares:
+        - name: traefik-real-ip
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: traefik-real-ip
+spec:
+  plugin:
+    traefik-real-ip:
+      forwardedForDepth: 2
+---
+```
+
+For further details on using plugins with Traefik, consult the [official Traefik documentation](https://doc.traefik.io/traefik/plugins/).
